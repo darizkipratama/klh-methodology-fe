@@ -4,8 +4,8 @@
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  userType: string;
   role: 'INTERNAL' | 'EXTERNAL';
 }
 

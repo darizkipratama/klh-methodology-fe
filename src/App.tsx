@@ -5,6 +5,7 @@ import { useAuthStore } from './domain/store/authStore';
 import LoginPage from './presentation/pages/auth/LoginPage';
 import ExternalDashboardPage from './presentation/pages/dashboard/ExternalDashboardPage';
 import AdminDashboardPage from './presentation/pages/dashboard/AdminDashboardPage';
+import DocumentDetailPage from './presentation/pages/dashboard/DocumentDetailPage';
 import DocumentUploadPage from './presentation/pages/document/DocumentUploadPage';
 
 // Component Imports
@@ -40,6 +41,12 @@ function App() {
         <Route path="/dashboard/admin" element={
           <ProtectedRoute allowedRoles={['INTERNAL']}>
             <AdminDashboardPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/dashboard/admin/document/:id" element={
+          <ProtectedRoute allowedRoles={['INTERNAL']}>
+            <DocumentDetailPage />
           </ProtectedRoute>
         } />
         
