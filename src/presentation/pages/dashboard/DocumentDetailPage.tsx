@@ -29,6 +29,20 @@ const DocumentDetailPage: React.FC = () => {
     }
   };
 
+  const handleUpdateStatus = async (status: string) => {
+    if (!id) return;
+    setIsSubmitting(true);
+    try {
+      await submissionService.updateStatus(id, status);
+      const res = await submissionService.getSubmissionById(id);
+      setSubmission(res.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     
@@ -191,10 +205,18 @@ const DocumentDetailPage: React.FC = () => {
                   <button onClick={() => setIsModalOpen(true)} className="bg-[#1a385f] hover:bg-[#122846] text-white px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-sm">
                     Tambah Hasil Pembahasan
                   </button>
-                  <button className="bg-[#1e7e45] hover:bg-[#156133] text-white px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-sm">
+                  <button 
+                    onClick={() => handleUpdateStatus('APPROVED')}
+                    disabled={isSubmitting}
+                    className="bg-[#1e7e45] hover:bg-[#156133] text-white px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50"
+                  >
                     Dokumen Disetujui
                   </button>
-                  <button className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-sm">
+                  <button 
+                    onClick={() => handleUpdateStatus('REJECTED')}
+                    disabled={isSubmitting}
+                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50"
+                  >
                     Dokumen Ditolak
                   </button>
                 </div>

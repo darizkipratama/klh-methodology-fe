@@ -29,5 +29,15 @@ export const submissionService = {
       }
     });
     return response.data;
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updateStatus: async (id: string, status: string): Promise<any> => {
+    const token = localStorage.getItem('token');
+    const response = await apiClient.patch(`/v1/submissions/${id}/status`, { status }, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    return response.data;
   }
 };

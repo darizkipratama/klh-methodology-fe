@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Building2 } from 'lucide-react';
+import { Mail, Lock, Building2, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../../domain/store/authStore';
+import { authService } from '../../../services/auth.service';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,20 @@ const LoginPage: React.FC = () => {
   // Auth Store Actions & State
   const { login, isLoading, error, clearError } = useAuthStore();
 
+  // Register Form State
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [userType, setUserType] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
@@ -25,10 +40,45 @@ const LoginPage: React.FC = () => {
       // The ProtectedRoute logic in App.tsx maps role to the right dashboard.
       // But we can trigger navigation here explicitly just in case.
       const userRole = useAuthStore.getState().user?.role || 'external';
-      navigate(userRole === 'admin' ? '/dashboard/admin' : '/dashboard/external');
+      navigate(userRole === 'INTERNAL' ? '/dashboard/admin' : '/dashboard/external');
     } catch (err) {
       // Error is caught by the store and displayed in the UI below
       console.error("Login Error:", err);
+    }
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError(null);
+
+    if (regPassword !== confirmPassword) {
+      setRegisterError("Konfirmasi kata sandi tidak cocok.");
+      return;
+    }
+
+    if (!agreeTerms) {
+      setRegisterError("Anda harus menyetujui Syarat & Ketentuan.");
+      return;
+    }
+
+    setRegisterLoading(true);
+    try {
+      const payload = {
+        username: `${firstName} ${lastName}`.trim(),
+        companyName,
+        userType,
+        email: regEmail,
+        password: regPassword,
+        role: "PUBLISHER"
+      };
+
+      await authService.register(payload);
+      setRegisterSuccess(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setRegisterError(err.response?.data?.message || err.message || "Registrasi gagal.");
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -140,20 +190,27 @@ const LoginPage: React.FC = () => {
           {/* Registration tab remains unchanged for now, mapping omitted for brevity but UI retained */}
           {activeTab === 'register' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <div className="mb-8 text-center">
-                <h1 className="text-[1.4rem] font-bold text-[#0a2558]">Registrasi Akun Baru</h1>
-                <p className="mt-2 text-[13px] text-gray-500">Lengkapi data untuk mendaftar di SRN PPI</p>
-              </div>
+              {registerError && (
+                <div className="mb-6 p-3 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                  {registerError}
+                </div>
+              )}
 
-              <form className="space-y-5">
+              <form className="space-y-5" onSubmit={handleRegisterSubmit}>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nama Depan</label>
-                    <input type="text" className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Nama" />
+                    <input 
+                      type="text" required
+                      value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Nama" />
                   </div>
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nama Belakang</label>
-                    <input type="text" className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Belakang" />
+                    <input 
+                      type="text" required
+                      value={lastName} onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Belakang" />
                   </div>
                 </div>
 
@@ -163,40 +220,58 @@ const LoginPage: React.FC = () => {
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                       <Building2 className="w-[18px] h-[18px] text-gray-400" />
                     </div>
-                    <input type="text" className="w-full py-3 pl-10 pr-4 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Contoh: PT. Maju Mundur Sejahtera" />
+                    <input 
+                      type="text" required
+                      value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full py-3 pl-10 pr-4 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Contoh: PT. Maju Mundur Sejahtera" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jenis Akun</label>
-                    <select className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all text-[#0a2558] font-medium shadow-sm">
+                    <select 
+                      required
+                      value={userType} onChange={(e) => setUserType(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all text-[#0a2558] font-medium shadow-sm">
                       <option value="" className="text-gray-400">Pilih Kategori</option>
-                      <option value="pemerintah">Pemerintah</option>
-                      <option value="swasta">Swasta</option>
-                      <option value="individu">Individu</option>
+                      <option value="Pemerintah">Pemerintah</option>
+                      <option value="Swasta">Swasta</option>
+                      <option value="Individu">Individu</option>
                     </select>
                   </div>
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Instansi</label>
-                    <input type="email" className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="email@instansi.id" />
+                    <input 
+                      type="email" required
+                      value={regEmail} onChange={(e) => setRegEmail(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="email@instansi.id" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kata Sandi</label>
-                    <input type="password" className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Min. 8 Karakter" />
+                    <input 
+                      type="password" required minLength={8}
+                      value={regPassword} onChange={(e) => setRegPassword(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Min. 8 Karakter" />
                   </div>
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Konfirmasi Sandi</label>
-                    <input type="password" className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Ulangi Sandi" />
+                    <input 
+                      type="password" required
+                      value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Ulangi Sandi" />
                   </div>
                 </div>
 
                 <div className="flex items-start mt-6 bg-transparent rounded">
                   <div className="flex items-center h-5 mt-0.5">
-                    <input type="checkbox" className="w-3.5 h-3.5 border-gray-300 rounded text-[#1e7845] focus:ring-[#1e7845]" />
+                    <input 
+                      type="checkbox" required
+                      checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="w-3.5 h-3.5 border-gray-300 rounded text-[#1e7845] focus:ring-[#1e7845]" />
                   </div>
                   <label className="ml-3 text-[10.5px] text-gray-400 leading-relaxed max-w-[90%]">
                     Saya setuju dengan <a href="#" className="font-bold text-[#1e7845] hover:underline">Syarat & Ketentuan</a> serta Kebijakan Privasi yang berlaku di lingkungan SRN PPI Indonesia.
@@ -204,8 +279,16 @@ const LoginPage: React.FC = () => {
                 </div>
 
                 <div className="pt-2">
-                  <button type="button" className="w-full py-3.5 text-xs font-bold text-white uppercase tracking-wider bg-[#1e7845] rounded-lg hover:bg-[#155a33] transition-colors shadow-md">
-                    Buat Akun Baru
+                  <button 
+                    type="submit" 
+                    disabled={registerLoading}
+                    className="w-full py-3.5 flex justify-center items-center gap-2 text-xs font-bold text-white uppercase tracking-wider bg-[#1e7845] rounded-lg hover:bg-[#155a33] transition-colors shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {registerLoading ? (
+                      <span className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full"></span>
+                    ) : (
+                      'Buat Akun Baru'
+                    )}
                   </button>
                 </div>
               </form>
@@ -225,6 +308,27 @@ const LoginPage: React.FC = () => {
       <div className="mt-10 text-center text-[9px] font-bold tracking-[0.2em] text-gray-400 uppercase relative z-10 w-full mb-4">
         Kementerian Lingkungan Hidup & Kehutanan
       </div>
+
+      {/* Success Splash / Modal */}
+      {registerSuccess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white animate-in fade-in duration-500">
+          <div className="max-w-md w-full p-10 flex flex-col items-center text-center animate-in zoom-in-95 slide-in-from-bottom-5 duration-700 delay-200">
+            <div className="w-24 h-24 bg-[#dcfce7] rounded-full flex items-center justify-center mb-8 shadow-sm">
+              <CheckCircle2 className="w-12 h-12 text-[#1e7845]" />
+            </div>
+            <h2 className="text-2xl font-black text-[#0a2558] mb-4">Registrasi Berhasil!</h2>
+            <p className="text-gray-500 text-sm leading-relaxed mb-10">
+              Akun Anda telah berhasil dibuat. Silakan masuk menggunakan email dan kata sandi yang telah didaftarkan.
+            </p>
+            <button 
+              onClick={() => { setRegisterSuccess(false); setActiveTab('login'); }}
+              className="w-full py-4 text-xs font-bold text-white uppercase tracking-wider bg-[#0a2558] rounded-xl hover:bg-[#071940] transition-all transform hover:scale-[1.02] active:scale-100 shadow-xl"
+            >
+              Masuk Sekarang
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

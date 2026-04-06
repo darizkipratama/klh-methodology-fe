@@ -34,8 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await authService.login(email, password);
       localStorage.setItem('token', data.data.token);
       // Ensure user defaults role if backend doesn't return one for testing purposes
-      const userWithRole = { ...data.data.user, role: data.data.user.role || 'external' };
-      
+      const userWithRole = { ...data.data.user, role: data.data.user.role || 'PUBLISHER' };
       set({ 
         user: userWithRole, 
         token: data.data.token, 

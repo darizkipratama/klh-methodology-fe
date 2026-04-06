@@ -20,5 +20,11 @@ export const authService = {
     } catch {
       return false;
     }
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  register: async (payload: any): Promise<any> => {
+    const response = await apiClient.post('/v1/auth/register', payload);
+    return response.data;
   }
 };
