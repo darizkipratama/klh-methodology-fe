@@ -39,5 +39,16 @@ export const submissionService = {
       }
     });
     return response.data;
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createSubmission: async (formData: FormData): Promise<any> => {
+    const token = localStorage.getItem('token');
+    const response = await apiClient.post('/v1/submissions', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    return response.data;
   }
 };

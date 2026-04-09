@@ -17,7 +17,7 @@ const Sidebar: React.FC = () => {
 
   const isDashboardActive = path === '/dashboard/admin' || path.includes('/document/');
   const isUsersActive = path === '/dashboard/admin/users';
-  const isEndpointActive = path === '/dashboard/admin/endpoints';
+  const isMetadataActive = path === '/dashboard/admin/metadata';
   return (
     <aside className="w-[280px] bg-[#1e7e45] min-h-screen flex flex-col text-white fixed left-0 top-0 bottom-0 select-none z-10">
       <div className="p-8 flex flex-col items-center border-b border-[#288c52]">
@@ -50,11 +50,11 @@ const Sidebar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="#" 
-              className={`flex items-center px-8 py-4 font-medium transition-colors ${isEndpointActive ? 'bg-[#239050] border-l-4 border-white text-white' : 'hover:bg-[#239050] border-l-4 border-transparent text-gray-100'}`}
+              to="/dashboard/admin/metadata" 
+              className={`flex items-center px-8 py-4 font-medium transition-colors ${isMetadataActive ? 'bg-[#239050] border-l-4 border-white text-white' : 'hover:bg-[#239050] border-l-4 border-transparent text-gray-100'}`}
             >
               <Code className="w-5 h-5 mr-4" />
-              Integrasi Endpoint
+              Integrasi Metadata
             </Link>
           </li>
           <li>

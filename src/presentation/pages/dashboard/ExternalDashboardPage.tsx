@@ -6,6 +6,12 @@ import { DataTable } from '../../components/DataTable';
 import ExternalLayout from '../../components/ExternalLayout';
 import { submissionService } from '../../../services/submission.service';
 import type { Submission } from '../../../domain/models/Submission';
+import { openKmClient } from '../../../services/api/apiClient';
+
+interface SektorOption {
+  id: string;
+  name: string;
+}
 
 const ExternalDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +19,7 @@ const ExternalDashboardPage: React.FC = () => {
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sektorOptions, setSektorOptions] = useState<SektorOption[]>([]);
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -26,7 +33,23 @@ const ExternalDashboardPage: React.FC = () => {
         setIsLoading(false);
       }
     };
+
+    const fetchSektorOptions = async () => {
+      try {
+        const response = await openKmClient.get('/documents/list/category');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const options = response.data.map((item: any) => ({
+          id: item.NBS_UUID,
+          name: item.NBS_NAME
+        }));
+        setSektorOptions(options);
+      } catch (error) {
+        console.error('Failed to fetch sektor options', error);
+      }
+    };
+
     fetchSubmissions();
+    fetchSektorOptions();
   }, []);
 
   // TanStack Table Column Definition
@@ -122,10 +145,10 @@ const ExternalDashboardPage: React.FC = () => {
                 <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Kategori Sektor</label>
                 <div className="relative">
                   <select className="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-[#1a385f] outline-none text-gray-600 bg-white appearance-none cursor-pointer">
-                    <option>Semua Sektor</option>
-                    <option>Energi</option>
-                    <option>FOLU</option>
-                    <option>Limbah</option>
+                    <option value="">Semua Sektor</option>
+                    {sektorOptions.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                     <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

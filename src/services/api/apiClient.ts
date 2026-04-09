@@ -12,5 +12,13 @@ export const apiClient = axios.create({
   },
 });
 
+export const openKmClient = axios.create({
+  baseURL: import.meta.env.VITE_OPEN_KM_URL || 'http://localhost:3000/',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'oYySHtoeP8o1x66Gv8M951EVkxI0Z0YqD6qKK4D02QkiAqS5ivrdpsSR5Ud1bbFl',
+  },
+});
+
 // apiClient.interceptors.request.use((config) => { ... add token ... })
 // apiClient.interceptors.response.use(...)

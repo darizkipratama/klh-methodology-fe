@@ -8,6 +8,7 @@ import ExternalProposalPage from './presentation/pages/dashboard/ExternalProposa
 import AdminDashboardPage from './presentation/pages/dashboard/AdminDashboardPage';
 import DocumentDetailPage from './presentation/pages/dashboard/DocumentDetailPage';
 import AdminUserManagementPage from './presentation/pages/dashboard/AdminUserManagementPage';
+import AdminMetadataBuilderPage from './presentation/pages/dashboard/AdminMetadataBuilderPage';
 import DocumentUploadPage from './presentation/pages/document/DocumentUploadPage';
 
 // Component Imports
@@ -61,6 +62,12 @@ function App() {
         <Route path="/dashboard/admin/users" element={
           <ProtectedRoute allowedRoles={['INTERNAL']}>
             <AdminUserManagementPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/dashboard/admin/metadata" element={
+          <ProtectedRoute allowedRoles={['INTERNAL']}>
+            <AdminMetadataBuilderPage />
           </ProtectedRoute>
         } />
         

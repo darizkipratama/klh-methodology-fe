@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import ExternalLayout from '../../components/ExternalLayout';
+import { submissionService } from '../../../services/submission.service';
+import { useAuthStore } from '../../../domain/store/authStore';
+import { openKmClient } from '../../../services/api/apiClient';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface FormData {
+interface ProposalFormData {
   submissionType: 'NEW' | 'REVISION';
   parentDocumentId?: string;
   parentDocumentName?: string;
-  namaMetodologi: string;
+  title: string;
   kategoriSektor: string;
   sumberAcuan: string;
-  justifikasi: string;
+  description: string;
+  publisherId: string;
   // Step 2 – Dokumen
-  dokumenFile: File | null;
+  file: File | null;
   metadata: Record<string, string>;
   // Step 3 – Review (read-only, no extra fields)
 }
@@ -36,7 +40,11 @@ const STEPS = [
   { id: 3, label: 'Review' },
 ];
 
-const SEKTOR_OPTIONS = ['Energi', 'FOLU', 'Limbah', 'Pertanian', 'Industri', 'Transportasi'];
+export interface SektorOption {
+  id: string;
+  name: string;
+}
+
 const SUMBER_OPTIONS = ['UNFCCC Approved', 'Gold Standard', 'Verra (VCS)', 'Dirjen PPI', 'BSN (SNI)', 'Lainnya'];
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
@@ -75,10 +83,11 @@ const StepIndicator: React.FC<{ currentStep: number }> = ({ currentStep }) => (
 // ─── Step 1 – Informasi ───────────────────────────────────────────────────────
 
 const StepInformasi: React.FC<{
-  data: FormData;
-  onChange: (field: keyof FormData, value: string) => void;
+  data: ProposalFormData;
+  sektorOptions: SektorOption[];
+  onChange: (field: keyof ProposalFormData, value: string) => void;
   onShowModal: () => void;
-}> = ({ data, onChange, onShowModal }) => (
+}> = ({ data, sektorOptions, onChange, onShowModal }) => (
   <div className="space-y-6">
     {/* Tipe Pengusulan */}
     <div>
@@ -125,8 +134,8 @@ const StepInformasi: React.FC<{
       <input
         id="nama-metodologi"
         type="text"
-        value={data.namaMetodologi}
-        onChange={(e) => onChange('namaMetodologi', e.target.value)}
+        value={data.title}
+        onChange={(e) => onChange('title', e.target.value)}
         placeholder="Contoh: Metodologi Pengurangan Emisi dari Efisiensi Energi"
         className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-[#1a385f]/30 focus:border-[#1a385f] outline-none placeholder:text-gray-300 transition-all bg-white"
       />
@@ -146,7 +155,7 @@ const StepInformasi: React.FC<{
             className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-[#1a385f]/30 focus:border-[#1a385f] outline-none text-gray-600 bg-white appearance-none cursor-pointer transition-all"
           >
             <option value="">-- Pilih Sektor --</option>
-            {SEKTOR_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+            {sektorOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -178,16 +187,16 @@ const StepInformasi: React.FC<{
       </div>
     </div>
 
-    {/* Justifikasi */}
+    {/* description */}
     <div>
       <label className="block mb-2 text-[11px] font-black text-[#1a385f] uppercase tracking-widest">
-        Justifikasi Pengusulan
+        description Pengusulan
       </label>
       <textarea
-        id="justifikasi"
+        id="description"
         rows={6}
-        value={data.justifikasi}
-        onChange={(e) => onChange('justifikasi', e.target.value)}
+        value={data.description}
+        onChange={(e) => onChange('description', e.target.value)}
         placeholder="Uraikan alasan mengapa metodologi ini perlu diusulkan..."
         className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-[#1a385f]/30 focus:border-[#1a385f] outline-none placeholder:text-gray-300 resize-none transition-all bg-white"
       />
@@ -198,9 +207,9 @@ const StepInformasi: React.FC<{
 // ─── Step 2 – Dokumen ─────────────────────────────────────────────────────────
 
 const StepDokumen: React.FC<{
-  data: FormData;
+  data: ProposalFormData;
   metadataConfig: MetadataField[];
-  onChange: (field: keyof FormData, value: string | File | null) => void;
+  onChange: (field: keyof ProposalFormData, value: string | File | null) => void;
   onMetadataChange: (key: string, value: string) => void;
 }> = ({ data, metadataConfig, onChange, onMetadataChange }) => (
   <div className="space-y-6">
@@ -218,8 +227,8 @@ const StepDokumen: React.FC<{
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          {data.dokumenFile ? (
-            <span className="text-sm font-semibold text-[#1a385f]">{data.dokumenFile.name}</span>
+          {data.file ? (
+            <span className="text-sm font-semibold text-[#1a385f]">{data.file.name}</span>
           ) : (
             <>
               <span className="text-sm font-semibold">Klik untuk memilih file</span>
@@ -232,7 +241,7 @@ const StepDokumen: React.FC<{
           type="file"
           accept=".pdf,.docx,.doc"
           className="hidden"
-          onChange={(e) => onChange('dokumenFile', e.target.files?.[0] ?? null)}
+          onChange={(e) => onChange('file', e.target.files?.[0] ?? null)}
         />
       </label>
     </div>
@@ -291,14 +300,15 @@ const StepDokumen: React.FC<{
 
 // ─── Step 3 – Review ──────────────────────────────────────────────────────────
 
-const StepReview: React.FC<{ data: FormData; metadataConfig: MetadataField[] }> = ({ data, metadataConfig }) => {
+const StepReview: React.FC<{ data: ProposalFormData; metadataConfig: MetadataField[]; sektorOptions: SektorOption[] }> = ({ data, metadataConfig, sektorOptions }) => {
+  const selectedSektor = sektorOptions.find((s) => s.id === data.kategoriSektor);
   const baseRows: { label: string; value: string }[] = [
     { label: 'Tipe Pengusulan', value: data.submissionType === 'REVISION' ? `Revisi (${data.parentDocumentName || '—'})` : 'Baru' },
-    { label: 'Nama Metodologi', value: data.namaMetodologi || '—' },
-    { label: 'Kategori Sektor', value: data.kategoriSektor || '—' },
+    { label: 'Nama Metodologi', value: data.title || '—' },
+    { label: 'Kategori Sektor', value: selectedSektor?.name || data.kategoriSektor || '—' },
     { label: 'Sumber Acuan', value: data.sumberAcuan || '—' },
-    { label: 'Justifikasi Pengusulan', value: data.justifikasi || '—' },
-    { label: 'Dokumen', value: data.dokumenFile?.name || '—' },
+    { label: 'description Pengusulan', value: data.description || '—' },
+    { label: 'Dokumen', value: data.file?.name || '—' },
   ];
 
   const metadataRows = metadataConfig.map(field => ({
@@ -398,27 +408,50 @@ const ExternalProposalPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [sektorOptions, setSektorOptions] = useState<SektorOption[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [metadataConfig, setMetadataConfig] = useState<MetadataField[]>(MOCK_METADATA_RESPONSE);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ProposalFormData>({
     submissionType: 'NEW',
-    namaMetodologi: '',
+    title: '',
     kategoriSektor: '',
     sumberAcuan: 'UNFCCC Approved',
-    justifikasi: '',
-    dokumenFile: null,
+    description: '',
+    publisherId: '',
+    file: null,
     metadata: {},
   });
 
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    const fetchSektorOptions = async () => {
+      try {
+        const response = await openKmClient.get('/documents/list/category');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const options = response.data.map((item: any) => ({
+          id: item.NBS_UUID,
+          name: item.NBS_NAME
+        }));
+        setSektorOptions(options);
+      } catch (error) {
+        console.error('Failed to fetch sektor options', error);
+      }
+    };
+    fetchSektorOptions();
+  }, []);
+
   const handleMetadataChange = (key: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev: ProposalFormData) => ({
       ...prev,
       metadata: { ...prev.metadata, [key]: value }
     }));
   };
 
-  const handleChange = (field: keyof FormData, value: string | File | null) => {
+  const handleChange = (field: keyof ProposalFormData, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -430,9 +463,39 @@ const ExternalProposalPage: React.FC = () => {
     if (currentStep > 1) setCurrentStep((s) => s - 1);
   };
 
-  const handleSubmit = () => {
-    // TODO: wire to API
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      
+
+      const payload = new FormData();
+      payload.append('submissionType', formData.submissionType);
+      payload.append('title', formData.title);
+      payload.append('kategoriSektor', formData.kategoriSektor);
+      payload.append('sumberAcuan', formData.sumberAcuan);
+      payload.append('description', formData.description);
+      payload.append('publisherId', user?.id || '');
+      
+      if (formData.file) {
+        payload.append('file', formData.file);
+      }
+      if (formData.submissionType === 'REVISION' && formData.parentDocumentId) {
+        payload.append('parentDocumentId', formData.parentDocumentId);
+      }
+      
+      // Submit metadata object as a JSON string
+      payload.append('metadata', JSON.stringify(formData.metadata));
+
+      await submissionService.createSubmission(payload);
+      setSubmitted(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Failed to submit:', error);
+      setSubmitError(error.response?.data?.message || 'Gagal mengirim usulan. Silakan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ── Success screen ──
@@ -491,7 +554,7 @@ const ExternalProposalPage: React.FC = () => {
         <div className="bg-white border border-gray-100 rounded-xl shadow-[0_4px_24px_rgb(0,0,0,0.05)] overflow-hidden">
           <div className="p-7 md:p-8">
             {currentStep === 1 && (
-              <StepInformasi data={formData} onChange={handleChange} onShowModal={() => setShowRevisionModal(true)} />
+              <StepInformasi data={formData} sektorOptions={sektorOptions} onChange={handleChange} onShowModal={() => setShowRevisionModal(true)} />
             )}
             {currentStep === 2 && (
               <StepDokumen 
@@ -502,7 +565,16 @@ const ExternalProposalPage: React.FC = () => {
               />
             )}
             {currentStep === 3 && (
-              <StepReview data={formData} metadataConfig={metadataConfig} />
+              <StepReview data={formData} metadataConfig={metadataConfig} sektorOptions={sektorOptions} />
+            )}
+            
+            {submitError && (
+              <div className="mt-4 p-3 bg-red-50 text-red-600 text-[13px] rounded-md border border-red-100 flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {submitError}
+              </div>
             )}
           </div>
 
@@ -527,7 +599,7 @@ const ExternalProposalPage: React.FC = () => {
               <button
                 id="lanjutkan-btn"
                 onClick={handleNext}
-                disabled={currentStep === 1 && !formData.namaMetodologi.trim()}
+                disabled={currentStep === 1 && !formData.title.trim()}
                 className="flex items-center gap-1.5 px-6 py-2.5 bg-[#1a385f] text-white text-[13px] font-bold rounded-lg hover:bg-[#12284a] transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Lanjutkan
@@ -537,10 +609,11 @@ const ExternalProposalPage: React.FC = () => {
               <button
                 id="kirim-btn"
                 onClick={handleSubmit}
-                className="flex items-center gap-1.5 px-6 py-2.5 bg-[#1e7e45] text-white text-[13px] font-bold rounded-lg hover:bg-[#1b7140] transition-colors shadow-sm"
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-6 py-2.5 bg-[#1e7e45] text-white text-[13px] font-bold rounded-lg hover:bg-[#1b7140] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                Kirim Usulan
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {isSubmitting ? 'Mengirim...' : 'Kirim Usulan'}
               </button>
             )}
           </div>
