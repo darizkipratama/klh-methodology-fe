@@ -10,6 +10,7 @@ import DocumentDetailPage from './presentation/pages/dashboard/DocumentDetailPag
 import AdminUserManagementPage from './presentation/pages/dashboard/AdminUserManagementPage';
 import AdminMetadataBuilderPage from './presentation/pages/dashboard/AdminMetadataBuilderPage';
 import DocumentUploadPage from './presentation/pages/document/DocumentUploadPage';
+import PublicDocumentDetailPage from './presentation/pages/document/DocumentDetailPage';
 
 // Component Imports
 import { ProtectedRoute } from './presentation/components/ProtectedRoute';
@@ -44,6 +45,12 @@ function App() {
         <Route path="/dashboard/external/propose" element={
           <ProtectedRoute allowedRoles={['PUBLISHER']}>
             <ExternalProposalPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/dashboard/external/document/:id" element={
+          <ProtectedRoute allowedRoles={['PUBLISHER']}>
+            <PublicDocumentDetailPage />
           </ProtectedRoute>
         } />
         

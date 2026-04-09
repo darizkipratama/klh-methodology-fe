@@ -103,9 +103,13 @@ const ExternalDashboardPage: React.FC = () => {
       {
         id: 'actions',
         header: () => <div className="text-center">Aksi</div>,
-        cell: () => (
+        cell: (info) => (
           <div className="flex items-center justify-center gap-4">
-            <button className="text-[#1a385f] opacity-70 hover:opacity-100 transition-opacity" title="Lihat">
+            <button 
+              onClick={() => navigate(`/dashboard/external/document/${info.row.original._id}`)}
+              className="text-[#1a385f] opacity-70 hover:opacity-100 transition-opacity" 
+              title="Lihat"
+            >
               <Eye className="w-4 h-4" />
             </button>
             <button className="text-[#1e7e45] opacity-70 hover:opacity-100 transition-opacity" title="Unduh">
