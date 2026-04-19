@@ -1,19 +1,47 @@
 import React from 'react';
-import { Share2, Printer, Info, CheckCircle2, FileText, History, Calendar } from 'lucide-react';
-import ExternalLayout from '../../components/ExternalLayout';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Share2, Printer, Info, CheckCircle2, FileText, History, Calendar, ChevronLeft, Home } from 'lucide-react';
+import PublicLayout from '../../components/PublicLayout';
 
-const DocumentDetailPage: React.FC = () => {
+const PublicDocumentDetailPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams(); // Using ID from route if needed for API fetch
+
   return (
-    <ExternalLayout>
-      <div className="max-w-[1200px] mx-auto w-full p-6 md:p-8 space-y-6">
+    <PublicLayout>
+      {/* Breadcrumb Navigation Area */}
+      <div className="bg-white border-b border-gray-100 py-3 px-6 md:px-12 shadow-sm sticky top-[74px] z-40">
+        <div className="max-w-[1200px] mx-auto flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+          <button onClick={() => navigate('/')} className="hover:text-[#1a385f] transition-colors flex items-center gap-1">
+            <Home className="w-3.5 h-3.5" /> Beranda
+          </button>
+          <span>/</span>
+          <button onClick={() => navigate('/metodologi')} className="hover:text-[#1a385f] transition-colors">
+            Metodologi
+          </button>
+          <span>/</span>
+          <span className="text-[#1a385f]">Detail: MET-ENE-001</span>
+        </div>
+      </div>
+
+      <div className="max-w-[1200px] mx-auto w-full p-6 md:p-8 space-y-6 lg:mt-4">
         
+        {/* Navigation Back */}
+        <button 
+          onClick={() => navigate('/metodologi')}
+          className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-[#1a385f] transition-colors group mb-2"
+        >
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Kembali ke Daftar Metodologi
+        </button>
+
         {/* Header Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 p-6 md:p-8 relative">
           <div className="flex items-center gap-3 mb-4">
             <span className="bg-[#e8f5ed] text-[#16a34a] text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
               Berhasil Publikasi
             </span>
-            <span className="text-[11px] font-bold text-gray-400">ID: MET-ENE-001</span>
+            <span className="text-[11px] font-bold text-gray-400">ID: {id || 'MET-ENE-001'}</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -28,10 +56,10 @@ const DocumentDetailPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              <button className="p-2.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-[#1a385f] transition-colors">
+              <button className="p-2.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-[#1a385f] transition-colors shadow-sm">
                 <Share2 className="w-4 h-4" />
               </button>
-              <button className="p-2.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-[#1a385f] transition-colors">
+              <button className="p-2.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-[#1a385f] transition-colors shadow-sm">
                 <Printer className="w-4 h-4" />
               </button>
             </div>
@@ -211,10 +239,13 @@ const DocumentDetailPage: React.FC = () => {
               <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl"></div>
               <h3 className="text-sm font-bold mb-2 relative z-10">Bantuan Teknis</h3>
               <p className="text-[11px] text-[#e8f5ed] leading-relaxed mb-5 relative z-10">
-                Ingin mengadopsi metodologi ini untuk proyek SPE-GRK Anda? Hubungi meja bantuan kami.
+                Hubungi administrator terkait metodologi ini untuk informasi teknis lebih lanjut.
               </p>
-              <button className="w-full py-2.5 bg-white text-[#1e7e45] text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm relative z-10">
-                Hubungi Helpdesk
+              <button 
+                onClick={() => navigate('/login')}
+                className="w-full py-2.5 bg-white text-[#1e7e45] text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm relative z-10"
+              >
+                Masuk untuk Diskusi
               </button>
             </div>
 
@@ -222,8 +253,8 @@ const DocumentDetailPage: React.FC = () => {
 
         </div>
       </div>
-    </ExternalLayout>
+    </PublicLayout>
   );
 };
 
-export default DocumentDetailPage;
+export default PublicDocumentDetailPage;

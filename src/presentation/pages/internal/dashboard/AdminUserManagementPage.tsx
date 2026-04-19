@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { DataTable } from '../../components/DataTable';
-import AdminLayout from '../../components/AdminLayout';
-import { userService } from '../../../services/user.service';
-import type { UserData } from '../../../domain/models/User';
+import { DataTable } from '../../../components/DataTable';
+import AdminLayout from '../../../components/AdminLayout';
+import { userService } from '../../../../services/user.service';
+import type { UserData } from '../../../../domain/models/User';
 
 const AdminUserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserData[]>([]);

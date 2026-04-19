@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import AdminLayout from '../../components/AdminLayout';
+import AdminLayout from '../../../components/AdminLayout';
 import { Download, ArrowLeft, X } from 'lucide-react';
-import { submissionService } from '../../../services/submission.service';
-import type { Submission } from '../../../domain/models/Submission';
+import { submissionService } from '../../../../services/submission.service';
+import type { Submission } from '../../../../domain/models/Submission';
 
 const DocumentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

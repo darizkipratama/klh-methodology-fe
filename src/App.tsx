@@ -3,14 +3,16 @@ import { useAuthStore } from './domain/store/authStore';
 
 // Page Imports
 import LoginPage from './presentation/pages/auth/LoginPage';
-import ExternalDashboardPage from './presentation/pages/dashboard/ExternalDashboardPage';
-import ExternalProposalPage from './presentation/pages/dashboard/ExternalProposalPage';
-import AdminDashboardPage from './presentation/pages/dashboard/AdminDashboardPage';
-import DocumentDetailPage from './presentation/pages/dashboard/DocumentDetailPage';
-import AdminUserManagementPage from './presentation/pages/dashboard/AdminUserManagementPage';
-import AdminMetadataBuilderPage from './presentation/pages/dashboard/AdminMetadataBuilderPage';
-import DocumentUploadPage from './presentation/pages/document/DocumentUploadPage';
-import PublicDocumentDetailPage from './presentation/pages/document/DocumentDetailPage';
+import ExternalDashboardPage from './presentation/pages/publisher/ExternalDashboardPage';
+import ExternalProposalPage from './presentation/pages/publisher/ExternalProposalPage';
+import ExternalDocumentDetailPage from './presentation/pages/publisher/ExternalDocumentDetailPage';
+import AdminDashboardPage from './presentation/pages/internal/dashboard/AdminDashboardPage';
+import DocumentDetailPage from './presentation/pages/internal/dashboard/DocumentDetailPage';
+import AdminUserManagementPage from './presentation/pages/internal/dashboard/AdminUserManagementPage';
+import AdminMetadataBuilderPage from './presentation/pages/internal/dashboard/AdminMetadataBuilderPage';
+import DocumentUploadPage from './presentation/pages/publisher/DocumentUploadPage';
+import PublicDocumentDetailPage from './presentation/pages/public/PublicDocumentDetailPage';
+import PublicMethodologyPage from './presentation/pages/public/PublicMethodologyPage';
 
 // Component Imports
 import { ProtectedRoute } from './presentation/components/ProtectedRoute';
@@ -29,6 +31,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
+        <Route path="/metodologi" element={<PublicMethodologyPage />} />
+        <Route path="/metodologi/:id" element={<PublicDocumentDetailPage />} />
         <Route path="/login" element={
           <PublicOnlyRoute>
             <LoginPage />
@@ -50,7 +54,7 @@ function App() {
 
         <Route path="/dashboard/external/document/:id" element={
           <ProtectedRoute allowedRoles={['PUBLISHER']}>
-            <PublicDocumentDetailPage />
+            <ExternalDocumentDetailPage />
           </ProtectedRoute>
         } />
         

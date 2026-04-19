@@ -2,10 +2,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Search, Plus, X } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { DataTable } from '../../components/DataTable';
-import AdminLayout from '../../components/AdminLayout';
-import { metadataService } from '../../../services/metadata.service';
-import type { MetadataField, MetadataCreatePayload } from '../../../domain/models/Metadata';
+import { DataTable } from '../../../components/DataTable';
+import AdminLayout from '../../../components/AdminLayout';
+import { metadataService } from '../../../../services/metadata.service';
+import type { MetadataField, MetadataCreatePayload } from '../../../../domain/models/Metadata';
 
 const AdminMetadataBuilderPage: React.FC = () => {
   const [metadataFields, setMetadataFields] = useState<MetadataField[]>([]);

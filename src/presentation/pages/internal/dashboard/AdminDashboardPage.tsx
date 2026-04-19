@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { DataTable } from '../../components/DataTable';
-import { submissionService } from '../../../services/submission.service';
-import type { Submission } from '../../../domain/models/Submission';
-import AdminLayout from '../../components/AdminLayout';
+import { DataTable } from '../../../components/DataTable';
+import { submissionService } from '../../../../services/submission.service';
+import type { Submission } from '../../../../domain/models/Submission';
+import AdminLayout from '../../../components/AdminLayout';
 
 const columns: ColumnDef<Submission>[] = [
   {
