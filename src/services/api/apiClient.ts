@@ -6,14 +6,14 @@ import axios from 'axios';
  * or catch global unauthenticated errors.
  */
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://194.233.72.247:15005/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 export const openKmClient = axios.create({
-  baseURL: import.meta.env.VITE_OPEN_KM_URL || 'http://localhost:3000/',
+  baseURL: import.meta.env.VITE_OPEN_KM_URL || 'http://94.233.72.247:8080/',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': 'oYySHtoeP8o1x66Gv8M951EVkxI0Z0YqD6qKK4D02QkiAqS5ivrdpsSR5Ud1bbFl',
