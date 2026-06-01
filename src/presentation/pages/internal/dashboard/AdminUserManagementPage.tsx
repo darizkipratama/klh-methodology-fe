@@ -10,6 +10,16 @@ const AdminUserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<'INTERNAL' | 'PUBLISHER'>('INTERNAL');
+  const [newUserType, setNewUserType] = useState('Pemerintah');
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Pagination
   const [page, setPage] = useState(1);
@@ -30,6 +40,56 @@ const AdminUserManagementPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const resetNewUserForm = () => {
+    setNewUsername('');
+    setNewEmail('');
+    setNewPassword('');
+    setNewRole('INTERNAL');
+    setNewUserType('Pemerintah');
+    setNewCompanyName('');
+    setCreateError('');
+  };
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreateError('');
+    if (!newUsername || !newEmail || !newPassword || !newRole) {
+      setCreateError('Semua field wajib diisi.');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await userService.createUser({
+        username: newUsername,
+        email: newEmail,
+        password: newPassword,
+        role: newRole,
+        userType: newUserType,
+        companyName: newCompanyName || undefined,
+      });
+      setSuccessMessage('Pengguna baru berhasil dibuat.');
+      resetNewUserForm();
+      setShowAddModal(false);
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchUsers();
+      }
+    } catch (error: unknown) {
+      console.error(error);
+      setCreateError('Gagal membuat pengguna. Silakan coba lagi.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(''), 4000);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
 
   useEffect(() => {
     // Basic debounce for search
@@ -58,13 +118,6 @@ const AdminUserManagementPage: React.FC = () => {
           <div className="text-sm font-bold text-[#1a385f]">{row.original.username}</div>
           <div className="text-[10px] font-medium text-gray-400 mt-0.5">{row.original.email}</div>
         </div>
-      ),
-    },
-    {
-      accessorKey: 'companyName',
-      header: 'Instansi / Perusahaan',
-      cell: ({ row }) => (
-        <span className="text-sm font-medium text-gray-600">{row.original.companyName}</span>
       ),
     },
     {
@@ -112,20 +165,38 @@ const AdminUserManagementPage: React.FC = () => {
           </h1>
           <p className="text-xs text-gray-400 mt-1">Kelola akses dan hak akses sistem</p>
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Cari pengguna..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1); // Reset to page 1 on search
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              resetNewUserForm();
+              setShowAddModal(true);
             }}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent w-64"
-          />
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            className="bg-[#1e7e45] hover:bg-[#156133] text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm"
+          >
+            Tambah Pengguna
+          </button>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Cari pengguna..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1); // Reset to page 1 on search
+              }}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent w-64"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+          </div>
         </div>
       </div>
+
+      {successMessage && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 shadow-lg text-sm font-semibold text-emerald-900">
+          {successMessage}
+        </div>
+      )}
 
       {/* Table Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/60 flex-1 mb-6 flex flex-col overflow-hidden">
@@ -164,6 +235,122 @@ const AdminUserManagementPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-[#1a385f]">Tambah Pengguna Baru</h3>
+                <p className="text-xs text-gray-500 mt-1">Isi data pengguna untuk membuat akun baru.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-6 p-6">
+              {createError && (
+                <div className="p-3 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                  {createError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Pengguna</label>
+                  <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="Username"
+                    required
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="email@domain.com"
+                    required
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Kata Sandi</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 8 karakter"
+                    required
+                    minLength={8}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Peran</label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as 'INTERNAL' | 'PUBLISHER')}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  >
+                    <option value="INTERNAL">Internal</option>
+                    <option value="PUBLISHER">Publisher</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Jenis Akun</label>
+                  <select
+                    value={newUserType}
+                    onChange={(e) => setNewUserType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  >
+                    <option value="Pemerintah">Pemerintah</option>
+                    <option value="Swasta">Swasta</option>
+                    <option value="Organisasi Kemasyarakatan/Independen">Organisasi Kemasyarakatan/Independen</option>
+                    <option value="Individu">Individu</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nama Instansi / Perusahaan</label>
+                  <input
+                    type="text"
+                    value={newCompanyName}
+                    onChange={(e) => setNewCompanyName(e.target.value)}
+                    placeholder="Opsional"
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e7e45] focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end items-center gap-3 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="bg-[#1e7e45] hover:bg-[#156133] text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? 'Menyimpan...' : 'Simpan Pengguna'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

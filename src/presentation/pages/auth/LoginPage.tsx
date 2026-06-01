@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Building2, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../../domain/store/authStore';
 import { authService } from '../../../services/auth.service';
 
@@ -18,7 +18,6 @@ const LoginPage: React.FC = () => {
   // Register Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const [userType, setUserType] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -65,7 +64,7 @@ const LoginPage: React.FC = () => {
     try {
       const payload = {
         username: `${firstName} ${lastName}`.trim(),
-        companyName,
+        // companyName,
         userType,
         email: regEmail,
         password: regPassword,
@@ -88,7 +87,7 @@ const LoginPage: React.FC = () => {
         <h1 className="text-[20rem] font-black tracking-tighter text-gray-900 leading-none m-0">SRN</h1>
       </div>
 
-      <div className="w-full max-w-[500px] bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden z-10 transition-all duration-300">
+      <div className="w-full max-w-125 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden z-10 transition-all duration-300">
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => { setActiveTab('login'); clearError(); }}
@@ -133,7 +132,7 @@ const LoginPage: React.FC = () => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                      <Mail className="w-[18px] h-[18px] text-gray-400" />
+                      <Mail className="w-4.5 h-4.5 text-gray-400" />
                     </div>
                     <input
                       type="text"
@@ -152,7 +151,7 @@ const LoginPage: React.FC = () => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                      <Lock className="w-[18px] h-[18px] text-gray-400" />
+                      <Lock className="w-4.5 h-4.5 text-gray-400" />
                     </div>
                     <input
                       type="password"
@@ -214,19 +213,6 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nama Instansi / Perusahaan</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                      <Building2 className="w-[18px] h-[18px] text-gray-400" />
-                    </div>
-                    <input 
-                      type="text" required
-                      value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full py-3 pl-10 pr-4 text-sm bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#0a2558] focus:border-[#0a2558] outline-none transition-all placeholder:text-gray-300 shadow-sm" placeholder="Contoh: PT. Maju Mundur Sejahtera" />
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jenis Akun</label>
@@ -237,11 +223,12 @@ const LoginPage: React.FC = () => {
                       <option value="" className="text-gray-400">Pilih Kategori</option>
                       <option value="Pemerintah">Pemerintah</option>
                       <option value="Swasta">Swasta</option>
+                      <option value="Swasta">LSM</option>
                       <option value="Individu">Individu</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Instansi</label>
+                    <label className="block mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
                     <input 
                       type="email" required
                       value={regEmail} onChange={(e) => setRegEmail(e.target.value)}
@@ -311,7 +298,7 @@ const LoginPage: React.FC = () => {
 
       {/* Success Splash / Modal */}
       {registerSuccess && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-white animate-in fade-in duration-500">
           <div className="max-w-md w-full p-10 flex flex-col items-center text-center animate-in zoom-in-95 slide-in-from-bottom-5 duration-700 delay-200">
             <div className="w-24 h-24 bg-[#dcfce7] rounded-full flex items-center justify-center mb-8 shadow-sm">
               <CheckCircle2 className="w-12 h-12 text-[#1e7845]" />

@@ -19,5 +19,22 @@ export const userService = {
       }
     });
     return response.data;
+  },
+
+  createUser: async (payload: {
+    username: string;
+    email: string;
+    password: string;
+    role: string;
+    userType?: string;
+    companyName?: string;
+  }): Promise<unknown> => {
+    const token = localStorage.getItem('token');
+    const response = await apiClient.post(`/v1/users`, payload, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    return response.data;
   }
 };
