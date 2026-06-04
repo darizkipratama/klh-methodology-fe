@@ -5,9 +5,11 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../components/DataTable';
 import PublicLayout from '../../components/PublicLayout';
 import { submissionService } from '../../../services/submission.service';
+import { openkmService } from '../../../services/openkm.service';
 import type { Submission } from '../../../domain/models/Submission';
 import { openKmClient } from '../../../services/api/apiClient';
-
+import type { PublicMethodologyColumn } from '../../../domain/models/Public';
+// import { PublicMethodologyColumns, type PublicMethodologyColumn } from '../../../domain/models/Public';
 interface SektorOption {
   id: string;
   name: string;
@@ -16,16 +18,66 @@ interface SektorOption {
 const PublicMethodologyPage: React.FC = () => {
   const navigate = useNavigate();
   // Tabs: IGRK-SPE and APRESIASI
-  const [activeTab, setActiveTab] = useState<'igrk-spe' | 'apresiasi'>('igrk-spe');
+  const [activeTab, setActiveTab] = useState<'nek' | 'apresiasi'>('apresiasi');
   
   // State for original list from API
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [publicMethodologies, setPublicMethodologies] = useState<PublicMethodologyColumn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Filtering states
   const [sektorOptions, setSektorOptions] = useState<SektorOption[]>([]);
   const [selectedSektor, setSelectedSektor] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const fetchOpenKmData = async () => {
+        setIsLoading(true);
+        console.log('Selected Sektor for OpenKM fetch:', selectedSektor); // Debug log to check selectedSektor value
+        if(selectedSektor !== '') {
+          try {
+            const res = await openkmService.getMethodology(selectedSektor, '553f2bcb-397d-4c50-8e13-5f312b27fedc');
+            const reducedRes = res.map(entry => {
+                const flattenItems:PublicMethodologyColumn = {
+                    number: '',
+                    name: '',
+                    source: '',
+                    status: '',
+                    klasifikasi: '',
+                    nbs_uuid: entry.nbs_uuid,
+                    nbs_name: entry.nbs_name,
+                    nbs_category: entry.nbs_category,
+                };
+                entry.items.forEach(item => {
+                  // console.log('Processing item:', item); // Debug log to check each item
+                  if(item.npg_name == "okp:methodology.name") {
+                    flattenItems.name = item.npg_value;
+                  } else if(item.npg_name == "okp:methodology.isactive") {
+                    flattenItems.status = item.npg_value;
+                  } else if(item.npg_name == "okp:methodology.nomor") {
+                    flattenItems.number = item.npg_value;
+                  }  else if(item.npg_name == "okp:methodology.approval") {
+                    flattenItems.source = item.npg_value;
+                  } else if(item.npg_name == "okp:methodology.classification") {
+                    flattenItems.klasifikasi = item.npg_value;
+                  }
+                });
+              return {
+                  ...flattenItems
+              } ;
+            });
+          setPublicMethodologies(reducedRes);
+          console.log('Reduced OpenKM Data:', reducedRes); // Debug log to check the transformed data structure
+        } catch (error) {
+          console.error('Failed to fetch OpenKM categories', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchOpenKmData();
+  }, [selectedSektor]); // Re-fetch if selectedSektor changes, adjust as needed
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -59,121 +111,220 @@ const PublicMethodologyPage: React.FC = () => {
   }, []);
 
   // Filter Submissions based on Tab, Sektor, and Search
-  const filteredSubmissions = useMemo(() => {
-    return submissions.filter(sub => {
-      // Very basic local filtering mockup for Tab (IGRK-SPE vs APRESIASI) 
-      // Assumption: document_type or some metadata distinction. 
-      // For now we allow all if we can't strict verify.
+  // const filteredSubmissions = useMemo(() => {
+  //   return submissions.filter(sub => {
+  //     // Very basic local filtering mockup for Tab (IGRK-SPE vs APRESIASI) 
+  //     // Assumption: document_type or some metadata distinction. 
+  //     // For now we allow all if we can't strict verify.
       
-      const searchMatch = sub.title?.toLowerCase().includes(searchQuery.toLowerCase());
+  //     const searchMatch = sub.title?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      let sektorMatch = true;
-      if (selectedSektor) {
-         // This assumes sub.metadata.document_type maps to NBS_NAME or UUID, 
-         // Adjust this based on actual data if needed.
-         sektorMatch = true; 
-      }
+  //     let sektorMatch = true;
+  //     if (selectedSektor) {
+  //        // This assumes sub.metadata.document_type maps to NBS_NAME or UUID, 
+  //        // Adjust this based on actual data if needed.
+  //        sektorMatch = true; 
+  //     }
       
-      return searchMatch && sektorMatch;
-    });
-  }, [submissions, searchQuery, selectedSektor, activeTab]);
-
-  // Split into dua kategori: Disetujui / Aktif dan Dalam Proses
-  const approvedMethodologies = useMemo(() => {
-    return filteredSubmissions.filter(sub => 
-      ['APPROVED', 'PUBLISHED'].includes(sub.internalReviewStatus || '')
-    );
-  }, [filteredSubmissions]);
-
-  const inProcessMethodologies = useMemo(() => {
-    return filteredSubmissions.filter(sub => 
-      !['APPROVED', 'PUBLISHED'].includes(sub.internalReviewStatus || '')
-    );
-  }, [filteredSubmissions]);
+  //     return searchMatch && sektorMatch;
+  //   });
+  // }, [submissions, searchQuery, selectedSektor, activeTab]);
 
   // State for expanded info
   const [showProsedur, setShowProsedur] = useState(false);
 
-  // Column definitions remain exactly the same as previously defined...
-  const columns = useMemo<ColumnDef<Submission>[]>(
-    () => [
-      {
-        id: 'no',
-        header: () => <div className="text-center w-12 text-[#1a385f]">No</div>,
-        cell: (info) => (
-          <div className="text-center text-gray-500 font-medium">
-            {info.row.index + 1}
-          </div>
-        ),
-      },
-      {
-        accessorKey: 'title',
-        header: () => <div className="text-[#1a385f]">Nama Metodologi</div>,
-        cell: (info) => (
-          <span className="font-bold text-[#1a385f] hover:text-[#1e7e45] cursor-pointer transition-colors block leading-tight">
-            {info.getValue() as string}
-          </span>
-        ),
-      },
-      {
-        accessorFn: (row) => row.metadata?.document_type || '-',
-        id: 'sektor',
-        header: () => <div className="text-[#1a385f]">Jenis Dokumen</div>,
-        cell: (info) => (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
-            {info.getValue() as string}
-          </span>
-        ),
-      },
-      {
-        accessorFn: (row) => row.publisherId?.username || '-',
-        id: 'sumber',
-        header: () => <div className="text-[#1a385f]">Pengusul</div>,
-        cell: (info) => <span className="text-gray-600 font-medium text-sm">{info.getValue() as string}</span>,
-      },
-      {
-        accessorKey: 'internalReviewStatus',
-        header: () => <div className="text-center text-[#1a385f]">Status</div>,
-        cell: (info) => {
-          const status = info.getValue() as string;
-          const isActive = status === 'APPROVED' || status === 'PUBLISHED';
-          
-          return (
-            <div className="flex justify-center">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm border ${
-                isActive 
-                  ? 'bg-gradient-to-r from-[#1e7e45] to-[#259755] text-white border-transparent' 
-                  : 'bg-amber-50 text-amber-600 border-amber-200'
-              }`}>
-                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                {status || 'DRAFT'}
-              </span>
-            </div>
-          );
-        }
-      },
-      {
-        id: 'actions',
-        header: () => <div className="text-center text-[#1a385f]">Aksi</div>,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        cell: (info) => (
-          <div className="flex items-center justify-center gap-3">
-            <button 
-              onClick={() => navigate(`/metodologi/${info.row.original._id}`)}
-              className="p-2 text-[#1a385f] bg-[#f0f4f8] rounded-md hover:bg-[#e1eaf3] hover:text-[#12284a] transition-all" 
-              title="Lihat Detail"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
-              <MessageSquare className="w-4 h-4" />
-            </button>
-          </div>
-        ),
-      },
-    ],
-    []
-  );
+// Column definitions remain exactly the same as previously defined...
+   const columns = useMemo<ColumnDef<Submission>[]>(
+     () => [
+       {
+         id: 'no',
+         header: () => <div className="text-center w-12 text-[#1a385f]">No</div>,
+         cell: (info) => (
+           <div className="text-center text-gray-500 font-medium">
+             {info.row.index + 1}
+           </div>
+         ),
+       },
+       {
+         accessorKey: 'title',
+         header: () => <div className="text-[#1a385f]">Nama Metodologi</div>,
+         cell: (info) => (
+           <span className="font-bold text-[#1a385f] hover:text-[#1e7e45] cursor-pointer transition-colors block leading-tight">
+             {info.getValue() as string}
+           </span>
+         ),
+       },
+       {
+         accessorFn: (row) => row.metadata?.document_type || '-',
+         id: 'sektor',
+         header: () => <div className="text-[#1a385f]">Jenis Dokumen</div>,
+         cell: (info) => (
+           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
+             {info.getValue() as string}
+           </span>
+         ),
+       },
+       {
+         accessorFn: (row) => row.publisherId?.username || '-',
+         id: 'sumber',
+         header: () => <div className="text-[#1a385f]">Pengusul</div>,
+         cell: (info) => <span className="text-gray-600 font-medium text-sm">{info.getValue() as string}</span>,
+       },
+       {
+         accessorKey: 'internalReviewStatus',
+         header: () => <div className="text-center text-[#1a385f]">Status</div>,
+         cell: (info) => {
+           const status = info.getValue() as string;
+           const isActive = status === 'APPROVED' || status === 'PUBLISHED';
+           
+           return (
+             <div className="flex justify-center">
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm border ${
+                 isActive 
+                   ? 'bg-gradient-to-r from-[#1e7e45] to-[#259755] text-white border-transparent' 
+                   : 'bg-amber-50 text-amber-600 border-amber-200'
+               }`}>
+                 {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                 {status || 'DRAFT'}
+               </span>
+             </div>
+           );
+         }
+       },
+       {
+         id: 'actions',
+         header: () => <div className="text-center text-[#1a385f]">Aksi</div>,
+         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         cell: (info) => (
+           <div className="flex items-center justify-center gap-3">
+             <button 
+               onClick={() => navigate(`/metodologi/${info.row.original._id}`)}
+               className="p-2 text-[#1a385f] bg-[#f0f4f8] rounded-md hover:bg-[#e1eaf3] hover:text-[#12284a] transition-all" 
+               title="Lihat Detail"
+             >
+               <Eye className="w-4 h-4" />
+             </button>
+             <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
+               <MessageSquare className="w-4 h-4" />
+             </button>
+           </div>
+         ),
+       },
+     ],
+     []
+   );
+
+   // Column definitions for PublicMethodologyColumn from OpenKM
+   const publicMethodologyColumns = useMemo<ColumnDef<PublicMethodologyColumn>[]>(
+     () => [
+       {
+         id: 'no',
+         header: () => <div className="text-center w-12 text-[#1a385f]">No</div>,
+         cell: (info) => (
+           <div className="text-center text-gray-500 font-medium">
+             {info.row.index + 1}
+           </div>
+         ),
+       },
+       {
+         accessorKey: 'number',
+         header: () => <div className="text-[#1a385f]">Nomor</div>,
+         cell: (info) => (
+           <span className="font-bold text-[#1a385f]">
+             {info.getValue() as string}
+           </span>
+         ),
+       },
+       {
+         accessorKey: 'name',
+         header: () => <div className="text-[#1a385f]">Nama Metodologi</div>,
+         cell: (info) => (
+           <span className="font-bold text-[#1a385f] hover:text-[#1e7e45] cursor-pointer transition-colors block leading-tight max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+             {info.getValue() as string}
+           </span>
+         ),
+       },
+       {
+         accessorKey: 'nbs_name',
+         header: () => <div className="text-[#1a385f]">Dokumen</div>,
+         cell: (info) => (
+           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
+             {info.getValue() as string}
+           </span>
+         ),
+       },
+       {
+         accessorKey: 'klasifikasi',
+         header: () => <div className="text-[#1a385f]">Classification</div>,
+         cell: (info) => {
+            const source = info.getValue() as string;
+            const dataSource = source.replace(/^\["|"\]$/g, '');
+            return (
+              <span className="text-gray-600 font-medium text-sm">{dataSource.toUpperCase()}</span>
+            );
+         },
+       },
+       {
+         accessorKey: 'source',
+         header: () => <div className="text-center text-[#1a385f]">Sumber</div>,
+         cell: (info) => {
+           const source = info.getValue() as string;
+           const dataSource = source.replace(/^\["|"\]$/g, '');
+           return (
+             <div className="flex justify-center">
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm border ${
+                 dataSource === 'SK-DIRJEN'
+                   ? 'bg-linear-to-r from-[#1e7e45] to-[#259755] text-white border-transparent'
+                   : 'bg-amber-50 text-amber-600 border-amber-200'
+               }`}>
+                 {dataSource || '-'}
+               </span>
+             </div>
+           );
+         }
+       },
+       {
+         accessorKey: 'status',
+         header: () => <div className="text-center text-[#1a385f]">Status</div>,
+         cell: (info) => {
+           const status = info.getValue() as string;
+           const isActive = status.replace(/^\["|"\]$/g, '') === 'TRUE' || status === '1'; // Adjust based on actual values
+           
+           return (
+             <div className="flex justify-center">
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm border ${
+                 isActive 
+                   ? 'bg-gradient-to-r from-[#1e7e45] to-[#259755] text-white border-transparent'
+                   : 'bg-amber-50 text-amber-600 border-amber-200'
+               }`}>
+                 {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                 {status.replace(/^\["|"\]$/g, '') || '-'}
+               </span>
+             </div>
+           );
+         }
+       },
+       {
+         id: 'actions',
+         header: () => <div className="text-center text-[#1a385f]">Aksi</div>,
+         cell: (info) => (
+           <div className="flex items-center justify-center gap-3">
+             <button 
+               onClick={() => navigate(`/metodologi/${info.row.original.nbs_uuid}`)}
+               className="p-2 text-[#1a385f] bg-[#f0f4f8] rounded-md hover:bg-[#e1eaf3] hover:text-[#12284a] transition-all" 
+               title="Lihat Detail"
+             >
+               <Eye className="w-4 h-4" />
+             </button>
+             <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
+               <MessageSquare className="w-4 h-4" />
+             </button>
+           </div>
+         ),
+       },
+     ],
+     []
+   );
 
   return (
     <PublicLayout>
@@ -247,12 +398,28 @@ const PublicMethodologyPage: React.FC = () => {
 
               {/* Status Filter (Optional for future, we currently split tables) */}
               <div>
-                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ruang Lingkup</label>
+                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sumber</label>
                 <div className="relative group">
                   <select className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all">
-                    <option>Semua Ruang Lingkup</option>
-                    <option>Nasional</option>
-                    <option>Internasional</option>
+                    <option>Semua Sumber</option>
+                    <option>UNFCCC</option>
+                    <option>SK-DIRJEN</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                    <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</label>
+                <div className="relative group">
+                  <select className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all">
+                    <option>Semua Status</option>
+                    <option>Aktif</option>
+                    <option>Non-Aktif</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                     <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -283,14 +450,14 @@ const PublicMethodologyPage: React.FC = () => {
           {/* Tab Navigation */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-1 flex">
             <button
-              onClick={() => setActiveTab('igrk-spe')}
+              onClick={() => setActiveTab('nek')}
               className={`flex-1 py-3.5 px-6 font-bold text-[14px] rounded-lg transition-all flex justify-center items-center gap-2 ${
-                activeTab === 'igrk-spe' 
+                activeTab === 'nek' 
                   ? 'bg-[#1a385f] text-white shadow-md' 
                   : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
-              METODOLOGI IGRK-SPE
+              METODOLOGI NEK
             </button>
             <button
               onClick={() => setActiveTab('apresiasi')}
@@ -383,23 +550,23 @@ const PublicMethodologyPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-10">
-              {/* Table 1: Metodologi Disetujui/Aktif */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-5 border-b-2 border-gray-50 flex items-center gap-4 bg-gradient-to-r from-white to-[#f0f4f8]/30">
-                  <div className="p-2.5 bg-[#e8f6ed] text-[#1e7e45] rounded-xl shadow-sm">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Daftar Metodologi Tersedia</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
+           {/* Table 1: Metodologi Disetujui/Aktif */}
+               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                 <div className="px-6 py-5 border-b-2 border-gray-50 flex items-center gap-4 bg-gradient-to-r from-white to-[#f0f4f8]/30">
+                   <div className="p-2.5 bg-[#e8f6ed] text-[#1e7e45] rounded-xl shadow-sm">
+                     <FileText className="w-5 h-5" />
+                   </div>
+                   <div>
+                     <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Daftar Metodologi dari OpenKM</h2>
+                     <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
                       Metodologi Terpublikasi & Disetujui
-                    </p>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <DataTable columns={columns} data={approvedMethodologies} />
-                </div>
-              </div>
+                     </p>
+                   </div>
+                 </div>
+                 <div className="p-6">
+                   <DataTable columns={publicMethodologyColumns} data={publicMethodologies} />
+                 </div>
+               </div>
 
               {/* Table 2: Metodologi Dalam Proses Pengajuan */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -415,7 +582,7 @@ const PublicMethodologyPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-6">
-                  <DataTable columns={columns} data={inProcessMethodologies} />
+                  <DataTable columns={columns} data={submissions} />
                 </div>
               </div>
             </div>

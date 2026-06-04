@@ -13,7 +13,7 @@ export const apiClient = axios.create({
 });
 
 export const openKmClient = axios.create({
-  baseURL: import.meta.env.VITE_OPEN_KM_URL || 'http://194.233.72.247:8080',
+  baseURL: import.meta.env.VITE_OPEN_KM_URL || 'http://194.233.72.247:3003',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': 'oYySHtoeP8o1x66Gv8M951EVkxI0Z0YqD6qKK4D02QkiAqS5ivrdpsSR5Ud1bbFl',

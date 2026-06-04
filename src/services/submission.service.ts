@@ -4,7 +4,7 @@ import type { SubmissionResponse } from '../domain/models/Submission';
 export const submissionService = {
   getSubmissions: async (page = 1, limit = 10): Promise<SubmissionResponse> => {
     const token = localStorage.getItem('token');
-    const response = await apiClient.get<SubmissionResponse>(`/v1/submissions?page=${page}&limit=${limit}`, {
+    const response = await apiClient.get<SubmissionResponse>(`/v1/submissions/public?page=${page}&limit=${limit}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
@@ -13,7 +13,7 @@ export const submissionService = {
   },
   getSubmissionById: async (id: string): Promise<import('../domain/models/Submission').SingleSubmissionResponse> => {
     const token = localStorage.getItem('token');
-    const response = await apiClient.get<import('../domain/models/Submission').SingleSubmissionResponse>(`/v1/submissions/${id}`, {
+    const response = await apiClient.get<import('../domain/models/Submission').SingleSubmissionResponse>(`/v1/submissions/${id}/public`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
