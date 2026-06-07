@@ -37,7 +37,7 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-5 py-4">
+                  <th key={header.id} className="px-4 py-3">
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -57,7 +57,7 @@ export function DataTable<TData, TValue>({
                   className="hover:bg-gray-50/70 transition-colors group"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-5 py-5 text-[13px]">
+                    <td key={cell.id} className="px-4 py-2.5 text-[13px]">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

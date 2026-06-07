@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Filter, Search, Eye, MessageSquare, Loader2, FileText, Activity } from 'lucide-react';
@@ -23,16 +24,19 @@ const PublicMethodologyPage: React.FC = () => {
   // State for original list from API
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [publicMethodologies, setPublicMethodologies] = useState<PublicMethodologyColumn[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isOpenKmLoading, setIsOpenKmLoading] = useState(true);
+  const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(true);
   
   // Filtering states
   const [sektorOptions, setSektorOptions] = useState<SektorOption[]>([]);
   const [selectedSektor, setSelectedSektor] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedSumber, setSelectedSumber] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
 
   useEffect(() => {
     const fetchOpenKmData = async () => {
-        setIsLoading(true);
+        setIsOpenKmLoading(true);
         console.log('Selected Sektor for OpenKM fetch:', selectedSektor); // Debug log to check selectedSektor value
         if(selectedSektor !== '') {
           try {
@@ -71,7 +75,7 @@ const PublicMethodologyPage: React.FC = () => {
         } catch (error) {
           console.error('Failed to fetch OpenKM categories', error);
         } finally {
-          setIsLoading(false);
+          setIsOpenKmLoading(false);
         }
       }
     };
@@ -82,13 +86,13 @@ const PublicMethodologyPage: React.FC = () => {
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-        setIsLoading(true);
+        setIsSubmissionsLoading(true);
         const res = await submissionService.getSubmissions(1, 100);
         setSubmissions(res.data);
       } catch (error) {
         console.error("Failed to fetch submissions:", error);
       } finally {
-        setIsLoading(false);
+        setIsSubmissionsLoading(false);
       }
     };
 
@@ -99,8 +103,21 @@ const PublicMethodologyPage: React.FC = () => {
         const options = response.data.map((item: any) => ({
           id: item.NBS_UUID,
           name: item.NBS_NAME
-        }));
+        })).sort((a: any, b: any  ) => {
+          const matchA = a.name.match(/^(\d+)/);
+          const matchB = b.name.match(/^(\d+)/);
+          
+          if (matchA && matchB) {
+            return parseInt(matchA[1], 10) - parseInt(matchB[1], 10);
+          }
+          if (matchA) return -1;
+          if (matchB) return 1;
+          return a.name.localeCompare(b.name);
+        });
         setSektorOptions(options);
+        if (options.length > 0) {
+          setSelectedSektor(options[0].id);
+        }
       } catch (error) {
         console.error('Failed to fetch sektor options', error);
       }
@@ -110,25 +127,42 @@ const PublicMethodologyPage: React.FC = () => {
     fetchSektorOptions();
   }, []);
 
-  // Filter Submissions based on Tab, Sektor, and Search
-  // const filteredSubmissions = useMemo(() => {
-  //   return submissions.filter(sub => {
-  //     // Very basic local filtering mockup for Tab (IGRK-SPE vs APRESIASI) 
-  //     // Assumption: document_type or some metadata distinction. 
-  //     // For now we allow all if we can't strict verify.
+  // Filter public methodologies based on Tab and Search
+  // (Note: Sektor filtering is handled by the API call, so we only filter by search and tab here)
+  const filteredPublicMethodologies = useMemo(() => {
+    return publicMethodologies.filter(item => {
+      // Filter by Search Query
+      const q = searchQuery.toLowerCase();
+      const searchMatch = !q || 
+        (item.name && item.name.toLowerCase().includes(q)) || 
+        (item.number && item.number.toLowerCase().includes(q));
       
-  //     const searchMatch = sub.title?.toLowerCase().includes(searchQuery.toLowerCase());
+      // Filter by Tab (NEK vs APRESIASI)
+      let tabMatch = true;
+      const klasifikasi = (item.klasifikasi || '').toLowerCase();
+      if (activeTab === 'nek') {
+        tabMatch = klasifikasi.includes('nek');
+      }
+
+      // Filter by Sumber
+      let sumberMatch = true;
+      if (selectedSumber) {
+        const itemSource = (item.source || '').replace(/^\["|"\]$/g, '');
+        sumberMatch = itemSource === selectedSumber;
+      }
+
+      // Filter by Status
+      let statusMatch = true;
+      if (selectedStatus) {
+        const itemStatus = (item.status || '');
+        const isActive = itemStatus.replace(/^\["|"\]$/g, '') === 'TRUE' || itemStatus === '1';
+        if (selectedStatus === 'Aktif') statusMatch = isActive;
+        if (selectedStatus === 'Non-Aktif') statusMatch = !isActive;
+      }
       
-  //     let sektorMatch = true;
-  //     if (selectedSektor) {
-  //        // This assumes sub.metadata.document_type maps to NBS_NAME or UUID, 
-  //        // Adjust this based on actual data if needed.
-  //        sektorMatch = true; 
-  //     }
-      
-  //     return searchMatch && sektorMatch;
-  //   });
-  // }, [submissions, searchQuery, selectedSektor, activeTab]);
+      return searchMatch && tabMatch && sumberMatch && statusMatch;
+    });
+  }, [publicMethodologies, searchQuery, activeTab, selectedSumber, selectedStatus]);
 
   // State for expanded info
   const [showProsedur, setShowProsedur] = useState(false);
@@ -246,7 +280,7 @@ const PublicMethodologyPage: React.FC = () => {
        },
        {
          accessorKey: 'nbs_name',
-         header: () => <div className="text-[#1a385f]">Dokumen</div>,
+         header: () => <div className="text-[#1a385f]">Nama Dokumen</div>,
          cell: (info) => (
            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
              {info.getValue() as string}
@@ -255,7 +289,7 @@ const PublicMethodologyPage: React.FC = () => {
        },
        {
          accessorKey: 'klasifikasi',
-         header: () => <div className="text-[#1a385f]">Classification</div>,
+         header: () => <div className="text-[#1a385f]">Klasifikasi</div>,
          cell: (info) => {
             const source = info.getValue() as string;
             const dataSource = source.replace(/^\["|"\]$/g, '');
@@ -316,9 +350,6 @@ const PublicMethodologyPage: React.FC = () => {
              >
                <Eye className="w-4 h-4" />
              </button>
-             <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
-               <MessageSquare className="w-4 h-4" />
-             </button>
            </div>
          ),
        },
@@ -346,194 +377,274 @@ const PublicMethodologyPage: React.FC = () => {
       </div>
 
       {/* Main Content Workspace */}
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-8 flex flex-col lg:flex-row gap-8 w-full -mt-8 relative z-20">
-
-        {/* Left Sidebar Filter */}
-        <div className="w-full lg:w-[300px] flex-shrink-0 flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border border-gray-100">
-            <div className="p-5 bg-gradient-to-r from-[#f8f9fa] to-white border-b border-gray-100 flex items-center gap-3">
-              <div className="p-2 bg-[#e6f4ea] text-[#1e7e45] rounded-lg">
-                <Filter className="w-4 h-4" />
-              </div>
-              <h2 className="font-bold text-[#1a385f] text-[14px]">Filter Pencarian</h2>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Search Field */}
-              <div>
-                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pencarian Kata Kunci</label>
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Contoh: Energi Baru..."
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none placeholder:text-gray-400 pr-10 transition-all bg-[#f8f9fa] group-hover:bg-white"
-                  />
-                  <Search className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5 pointer-events-none group-focus-within:text-[#1a385f] transition-colors" />
-                </div>
-              </div>
-
-              {/* Sektor Field */}
-              <div>
-                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Kategori Sektor</label>
-                <div className="relative group">
-                  <select 
-                    value={selectedSektor}
-                    onChange={(e) => setSelectedSektor(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all"
-                  >
-                    <option value="">Semua Sektor Metodologi</option>
-                    {sektorOptions.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Filter (Optional for future, we currently split tables) */}
-              <div>
-                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sumber</label>
-                <div className="relative group">
-                  <select className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all">
-                    <option>Semua Sumber</option>
-                    <option>UNFCCC</option>
-                    <option>SK-DIRJEN</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</label>
-                <div className="relative group">
-                  <select className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all">
-                    <option>Semua Status</option>
-                    <option>Aktif</option>
-                    <option>Non-Aktif</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button className="w-full py-3 text-[13px] font-bold text-white bg-[#1e7e45] rounded-lg hover:bg-[#186a39] hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none">
-                  Terapkan Filter
-                </button>
-                <button 
-                  onClick={() => { setSearchQuery(''); setSelectedSektor(''); }}
-                  className="w-full mt-3 py-2.5 text-[12px] font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all outline-none"
-                >
-                  Reset Filter
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Content Area */}
-        <div className="flex-1 w-full flex flex-col min-w-0 pb-16">
-
-          {/* Tab Navigation */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-1 flex">
-            <button
-              onClick={() => setActiveTab('nek')}
-              className={`flex-1 py-3.5 px-6 font-bold text-[14px] rounded-lg transition-all flex justify-center items-center gap-2 ${
-                activeTab === 'nek' 
-                  ? 'bg-[#1a385f] text-white shadow-md' 
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              METODOLOGI NEK
-            </button>
-            <button
-              onClick={() => setActiveTab('apresiasi')}
-              className={`flex-1 py-3.5 px-6 font-bold text-[14px] rounded-lg transition-all flex justify-center items-center gap-2 ${
-                activeTab === 'apresiasi' 
-                  ? 'bg-[#1a385f] text-white shadow-md' 
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              METODOLOGI APRESIASI
-            </button>
-          </div>
-
-          {/* Prosedur Pengusulan Info Widget */}
-          <div className="bg-[#f4f7fb] border border-[#e1eaf3] rounded-xl mb-8 overflow-hidden transition-all duration-300">
-            <button 
-              onClick={() => setShowProsedur(!showProsedur)}
-              className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-[#fafcfe] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#eaf1f8] text-[#2c65a6] rounded-full">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-extrabold text-[#1a385f] text-[14px]">Prosedur Pengusulan Metodologi</h3>
-                  <p className="text-[11px] text-gray-500 font-medium">Berdasarkan Peraturan Menteri LHK No. 21/2022</p>
-                </div>
-              </div>
-              <div className={`p-2 rounded-full transition-transform duration-300 ${showProsedur ? 'rotate-180 bg-gray-100' : 'bg-white border border-gray-100 shadow-sm'}`}>
-                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </button>
-            
-            {/* Expandable Content Area */}
-            <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${showProsedur ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-              <div className="overflow-hidden">
-                <div className="p-6 border-t border-[#e1eaf3] text-sm text-[#404852] leading-relaxed">
-                  <p className="mb-4">
-                    Dalam <strong>Peraturan Menteri LHK No. 21/2022, Pasal 60 ayat (2) huruf f</strong> disebutkan bahwa penerbitan SPE-GRK dari Offset emisi persyaratan metodologi yang digunakan untuk mengukur capaian kinerja Pengurangan emisi GRK harus memenuhi salah satu kriteria yaitu:
-                  </p>
-                  
-                  <ul className="space-y-2 mb-6 ml-2">
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#1e7e45]/10 text-[#1e7e45] flex items-center justify-center font-bold text-xs mt-0.5">1</span>
-                      <span>Ditetapkan oleh <strong>Direktur Jenderal</strong>;</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#1e7e45]/10 text-[#1e7e45] flex items-center justify-center font-bold text-xs mt-0.5">2</span>
-                      <span>Ditetapkan oleh <strong>Badan Standardisasi Nasional</strong>; atau</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#1e7e45]/10 text-[#1e7e45] flex items-center justify-center font-bold text-xs mt-0.5">3</span>
-                      <span>Disetujui oleh <strong>UNFCCC</strong>.</span>
-                    </li>
-                  </ul>
-                  
-                  <p className="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                    Guna memfasilitasi persyaratan dimaksud, melalui <strong>Keputusan Direktur Jenderal PPI No. 22/ PPI/GASP/PPI.2/6/2017</strong>, telah dibentuk Tim Panel Metodologi yang bertugas menetapkan metodologi yang dapat diusulkan dan digunakan oleh penanggungjawab aksi.
-                  </p>
-
-                  <div className="pt-5 border-t border-gray-200/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h4 className="font-bold text-[#1a385f] text-xs mb-1 uppercase tracking-wider">Layanan Bantuan Terkait Metodologi</h4>
-                      <p className="text-[11px] text-gray-500 leading-tight">Direktorat Inventarisasi GRK dan MPV<br/>Deputi Bidang PPI dan TKNEK</p>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-8 flex flex-col gap-8 w-full -mt-8 relative z-20 pb-16">
+        
+          <div className="space-y-10">
+            {/* Filter and Table 1 Container */}
+            <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+              
+              {/* Left Sidebar Filter - Specific to Table 1 */}
+              <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col">
+                <div className="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 h-full flex flex-col overflow-hidden">
+                  <div className="p-5 bg-gradient-to-r from-[#f8f9fa] to-white border-b border-gray-100 flex items-center gap-3 shrink-0">
+                    <div className="p-2 bg-[#e6f4ea] text-[#1e7e45] rounded-lg">
+                      <Filter className="w-4 h-4" />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <a href="mailto:srnindonesia@kemenlh.go.id" className="inline-flex items-center gap-2 text-xs font-semibold text-[#0D5B6C] hover:text-[#1a385f] transition-colors">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        srnindonesia@kemenlh.go.id
-                      </a>
-                      <div className="flex items-center gap-4 text-xs font-semibold text-[#0D5B6C]">
-                        <a href="tel:+62215730144" className="inline-flex items-center gap-2 hover:text-[#1a385f] transition-colors">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                          +62 (21) 5730144
+                    <h2 className="font-bold text-[#1a385f] text-[14px]">Filter Tabel OpenKM</h2>
+                  </div>
+
+                  <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                    {/* Sektor Field */}
+                    <div>
+                      <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Kategori Sektor</label>
+                      <div className="relative group">
+                        <select 
+                          value={selectedSektor}
+                          onChange={(e) => setSelectedSektor(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all"
+                        >
+                          {sektorOptions.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                          <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sumber</label>
+                      <div className="relative group">
+                        <select 
+                          value={selectedSumber}
+                          onChange={(e) => setSelectedSumber(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all"
+                        >
+                          <option value="">Semua Sumber</option>
+                          <option value="CDM">CDM</option>
+                          <option value="SK-DIRJEN">SK-DIRJEN</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                          <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Status</label>
+                      <div className="relative group">
+                        <select 
+                          value={selectedStatus}
+                          onChange={(e) => setSelectedStatus(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none text-gray-700 bg-[#f8f9fa] group-hover:bg-white appearance-none cursor-pointer transition-all"
+                        >
+                          <option value="">Semua Status</option>
+                          <option value="Aktif">Aktif</option>
+                          <option value="Non-Aktif">Non-Aktif</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                          <svg className="h-4 w-4 text-gray-400 group-focus-within:text-[#1a385f] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Search Field */}
+                    <div>
+                      <label className="block mb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pencarian Kata Kunci</label>
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Contoh: Energi Baru..."
+                          className="w-full px-4 py-2.5 text-sm border-2 border-gray-100 rounded-lg focus:ring-4 focus:ring-[#1a385f]/10 focus:border-[#1a385f] outline-none placeholder:text-gray-400 pr-10 transition-all bg-[#f8f9fa] group-hover:bg-white"
+                        />
+                        <Search className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5 pointer-events-none group-focus-within:text-[#1a385f] transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 pt-5 shrink-0 border-t border-gray-100 bg-gray-50/80">
+                    {/* <button className="w-full py-3 text-[13px] font-bold text-white bg-[#1e7e45] rounded-lg hover:bg-[#186a39] hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none">
+                      Terapkan Filter
+                    </button> */}
+                    <button 
+                      onClick={() => { setSearchQuery(''); setSelectedSektor(sektorOptions.length > 0 ? sektorOptions[0].id : ''); setSelectedSumber(''); setSelectedStatus(''); }}
+                      className="w-full mt-3 py-2.5 text-[12px] font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all outline-none"
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table 1: Metodologi Disetujui/Aktif */}
+              <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden" style={{ minHeight: '450px' }}>
+                <div className="px-6 py-5 border-b-2 border-gray-50 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-gradient-to-r from-white to-[#f0f4f8]/30 shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-[#e8f6ed] text-[#1e7e45] rounded-xl shadow-sm shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Daftar Metodologi Yang Sudah Disetujui</h2>
+                      <p className="text-[11px] font-bold text-[#1e7e45] mt-0.5 uppercase tracking-widest bg-[#e8f6ed] inline-block px-2 py-0.5 rounded">
+                        Terkoneksi dengan Filter
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Table Tabs */}
+                  <div className="bg-[#eaf1f8] p-1 rounded-lg flex items-center shadow-inner border border-blue-50 shrink-0 self-start xl:self-auto">
+                    <button
+                      onClick={() => setActiveTab('nek')}
+                      className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                        activeTab === 'nek' 
+                          ? 'bg-white text-[#1a385f] shadow-sm' 
+                          : 'text-gray-500 hover:text-[#1a385f] hover:bg-white/50'
+                      }`}
+                    >
+                      METODOLOGI NEK
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('apresiasi')}
+                      className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                        activeTab === 'apresiasi' 
+                          ? 'bg-white text-[#1a385f] shadow-sm' 
+                          : 'text-gray-500 hover:text-[#1a385f] hover:bg-white/50'
+                      }`}
+                    >
+                      METODOLOGI APRESIASI
+                    </button>
+                  </div>
+                </div>
+                {/* Overflow container forces the table area to be scrollable rather than stretching the whole card infinitely */}
+                <div className="p-0 flex-1 overflow-auto bg-gray-50/30">
+                  <div className="p-6 min-w-full h-full flex flex-col">
+                    {isOpenKmLoading ? (
+                      <div className="flex flex-col justify-center items-center py-24 m-auto">
+                        <Loader2 className="w-10 h-10 text-[#1a385f] animate-spin mb-4" />
+                        <p className="text-gray-500 font-medium animate-pulse">Sedang Proses Mengambil Data...</p>
+                      </div>
+                    ) : (
+                      <DataTable columns={publicMethodologyColumns} data={filteredPublicMethodologies} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Table 2: Metodologi Dalam Proses Pengajuan */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+              <div className="px-6 py-5 border-b-2 border-gray-50 flex items-center gap-4 bg-gradient-to-r from-white to-[#fef6e6]/30">
+                <div className="p-2.5 bg-amber-50 text-amber-500 rounded-xl shadow-sm">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Metodologi dalam Proses Pengajuan</h2>
+                  <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
+                    Sedang Dalam Tahap Persetujuan & Panel Diskusi
+                  </p>
+                </div>
+              </div>
+              <div className="p-6">
+                {isSubmissionsLoading ? (
+                  <div className="flex flex-col justify-center items-center py-16">
+                    <Loader2 className="w-8 h-8 text-[#1a385f] animate-spin mb-4" />
+                    <p className="text-gray-500 font-medium animate-pulse">Memuat pengajuan metodologi...</p>
+                  </div>
+                ) : (
+                  <DataTable columns={columns} data={submissions} />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Methodology Submission CTA */}
+          <div className="mt-8 bg-gradient-to-br from-[#1a385f] to-[#12284a] rounded-2xl shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#1e7e45]/20 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4"></div>
+            
+            <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex-1 text-white">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm font-medium mb-4 text-[#e8f6ed]">
+                  <Activity className="w-4 h-4" />
+                  <span>Partisipasi Anda Dibutuhkan</span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-black mb-3 text-white leading-tight">
+                  Punya Inovasi Metodologi Pengurangan Emisi?
+                </h3>
+                <p className="text-blue-100/80 text-sm md:text-base leading-relaxed mb-6 max-w-2xl">
+                  Berdasarkan Peraturan Menteri LHK No. 21/2022, Anda dapat berkontribusi dalam aksi iklim dengan mengusulkan metodologi baru. Mari berkolaborasi menciptakan standar pengukuran kinerja penurunan emisi GRK yang lebih baik untuk Indonesia.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => setShowProsedur(!showProsedur)}
+                    className="px-6 py-3 bg-white text-[#1a385f] hover:bg-gray-50 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-5 h-5" />
+                    <span>Lihat Prosedur Pengusulan</span>
+                  </button>
+                  <a 
+                    href="mailto:srnindonesia@kemenlh.go.id"
+                    className="px-6 py-3 bg-transparent border-2 border-white/20 text-white hover:bg-white/10 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    <span>Hubungi Tim Panel</span>
+                  </a>
+                </div>
+              </div>
+              
+              <div className="hidden lg:block flex-shrink-0 relative">
+                <div className="w-40 h-40 bg-gradient-to-tr from-[#1e7e45] to-[#4caf50] rounded-full opacity-20 animate-pulse absolute -inset-4 blur-xl"></div>
+                <div className="w-32 h-32 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl relative z-10 rotate-3 hover:rotate-0 transition-transform duration-500">
+                  <FileText className="w-16 h-16 text-white/90" />
+                </div>
+              </div>
+            </div>
+
+            {/* Expandable Procedure Section */}
+            <div className={`transition-all duration-500 ease-in-out border-t border-white/10 bg-black/20 backdrop-blur-sm ${showProsedur ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+              <div className="p-8 md:p-10 text-blue-50/90 text-sm leading-relaxed">
+                <div className="max-w-3xl">
+                  <p className="mb-6 text-base">
+                    Penerbitan SPE-GRK dari Offset emisi mensyaratkan metodologi pengukuran capaian kinerja yang memenuhi kriteria:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col items-center text-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#1e7e45]/30 text-[#4caf50] flex items-center justify-center font-black text-lg">1</div>
+                      <span className="font-semibold text-white">Ditetapkan oleh Direktur Jenderal</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col items-center text-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#1e7e45]/30 text-[#4caf50] flex items-center justify-center font-black text-lg">2</div>
+                      <span className="font-semibold text-white">Ditetapkan oleh Badan Standardisasi Nasional</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col items-center text-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#1e7e45]/30 text-[#4caf50] flex items-center justify-center font-black text-lg">3</div>
+                      <span className="font-semibold text-white">Disetujui oleh UNFCCC</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col md:flex-row gap-6 items-start bg-white/5 border border-white/10 rounded-xl p-6">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-white mb-2">Layanan Bantuan Metodologi</h4>
+                      <p className="text-blue-100/70 mb-4">Direktorat Inventarisasi GRK dan MPV<br/>Deputi Bidang PPI dan TKNEK</p>
+                      <div className="flex flex-col gap-3">
+                        <a href="mailto:srnindonesia@kemenlh.go.id" className="inline-flex items-center gap-3 text-white hover:text-[#4caf50] transition-colors">
+                          <div className="p-2 rounded-lg bg-white/10"><MessageSquare className="w-4 h-4" /></div>
+                          <span className="font-medium">srnindonesia@kemenlh.go.id</span>
+                        </a>
+                        <a href="tel:+62215730144" className="inline-flex items-center gap-3 text-white hover:text-[#4caf50] transition-colors">
+                          <div className="p-2 rounded-lg bg-white/10"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg></div>
+                          <span className="font-medium">+62 (21) 5730144</span>
                         </a>
                       </div>
                     </div>
@@ -542,53 +653,7 @@ const PublicMethodologyPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {isLoading ? (
-            <div className="flex flex-col justify-center items-center py-32 bg-white rounded-xl shadow-sm border border-gray-100">
-              <Loader2 className="w-10 h-10 text-[#1a385f] animate-spin mb-4" />
-              <p className="text-gray-500 font-medium animate-pulse">Memuat data metodologi...</p>
-            </div>
-          ) : (
-            <div className="space-y-10">
-           {/* Table 1: Metodologi Disetujui/Aktif */}
-               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                 <div className="px-6 py-5 border-b-2 border-gray-50 flex items-center gap-4 bg-gradient-to-r from-white to-[#f0f4f8]/30">
-                   <div className="p-2.5 bg-[#e8f6ed] text-[#1e7e45] rounded-xl shadow-sm">
-                     <FileText className="w-5 h-5" />
-                   </div>
-                   <div>
-                     <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Daftar Metodologi dari OpenKM</h2>
-                     <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
-                      Metodologi Terpublikasi & Disetujui
-                     </p>
-                   </div>
-                 </div>
-                 <div className="p-6">
-                   <DataTable columns={publicMethodologyColumns} data={publicMethodologies} />
-                 </div>
-               </div>
-
-              {/* Table 2: Metodologi Dalam Proses Pengajuan */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-5 border-b-2 border-gray-50 flex items-center gap-4 bg-gradient-to-r from-white to-[#fef6e6]/30">
-                  <div className="p-2.5 bg-amber-50 text-amber-500 rounded-xl shadow-sm">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-[#1a385f] tracking-tight">Metodologi dalam Proses Pengajuan</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
-                      Sedang Dalam Tahap Reviu & Panel
-                    </p>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <DataTable columns={columns} data={submissions} />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
     </PublicLayout>
   );
 };
