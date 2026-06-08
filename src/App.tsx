@@ -33,6 +33,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/metodologi" element={<PublicMethodologyPage />} />
         <Route path="/metodologi/:id" element={<PublicDocumentDetailPage />} />
+        <Route path="/metodologi-pengusulan/:id" element={<PublicDocumentDetailPage />} />
         <Route path="/login" element={
           <PublicOnlyRoute>
             <LoginPage />

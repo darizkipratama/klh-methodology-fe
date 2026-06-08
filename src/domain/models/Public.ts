@@ -1,3 +1,11 @@
+export interface OpenKmMetadata {
+    NPG_ID: number;
+    NPG_GROUP: string;
+    NPG_NAME: string;
+    NPG_VALUE: string;
+    NPG_NODE: string;
+}
+
 export interface PublicMethodology {
   nbs_uuid: string;
   nbs_name: string;
