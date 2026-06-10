@@ -181,7 +181,7 @@ const DocumentDetailPage: React.FC = () => {
           <section id="pembahasan">
             <h2 className="text-2xl font-black text-[#1a385f] mb-8 tracking-tight">Informasi Pembahasan</h2>
             {submission.comments.map((comment) => (
-              <div key={comment.id} className="border-b border-gray-100 pb-6">
+              <div key={comment._id} className="border-b border-gray-100 pb-6">
                 <div className="w-1/3">
                   <span className="text-xs font-bold text-gray-500">{comment.commenterId?.username}</span>
                   <span className="text-xs font-bold text-gray-500">-</span>

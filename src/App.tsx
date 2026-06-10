@@ -13,6 +13,7 @@ import AdminMetadataBuilderPage from './presentation/pages/internal/dashboard/Ad
 import DocumentUploadPage from './presentation/pages/publisher/DocumentUploadPage';
 import PublicDocumentDetailPage from './presentation/pages/public/PublicDocumentDetailPage';
 import PublicMethodologyPage from './presentation/pages/public/PublicMethodologyPage';
+import PublicProposalPage from './presentation/pages/public/PublicProposalPage';
 
 // Component Imports
 import { ProtectedRoute } from './presentation/components/ProtectedRoute';
@@ -33,7 +34,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/metodologi" element={<PublicMethodologyPage />} />
         <Route path="/metodologi/:id" element={<PublicDocumentDetailPage />} />
-        <Route path="/metodologi-pengusulan/:id" element={<PublicDocumentDetailPage />} />
+        <Route path="/metodologi-pengusulan/:id" element={<PublicProposalPage />} />
         <Route path="/login" element={
           <PublicOnlyRoute>
             <LoginPage />

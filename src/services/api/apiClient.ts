@@ -20,5 +20,29 @@ export const openKmClient = axios.create({
   },
 });
 
+// Add interceptor to handle 304 Not Modified responses
+// Some backends return 304 with cached data for performance - we treat them as valid responses
+apiClient.interceptors.response.use(
+  (response) => {
+    // If backend returns 304 but includes data, still process it
+    if (response.status === 304) {
+      return { ...response, status: 200 };
+    }
+    return response;
+  },
+  (error) => {
+    // If error is 304, convert to success response
+    if (error.response?.status === 304) {
+      return Promise.resolve({
+        ...error.response,
+        status: 200,
+        statusText: 'OK',
+        data: error.response.data || {}
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
 // apiClient.interceptors.request.use((config) => { ... add token ... })
 // apiClient.interceptors.response.use(...)

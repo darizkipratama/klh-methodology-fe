@@ -87,7 +87,7 @@ const PublicMethodologyPage: React.FC = () => {
     const fetchSubmissions = async () => {
       try {
         setIsSubmissionsLoading(true);
-        const res = await submissionService.getSubmissions(1, 100);
+        const res = await submissionService.getPublicSubmissions(1, 100);
         setSubmissions(res.data);
       } catch (error) {
         console.error("Failed to fetch submissions:", error);
@@ -99,7 +99,7 @@ const PublicMethodologyPage: React.FC = () => {
     const fetchSektorOptions = async () => {
       try {
         const response = await openKmClient.get('/documents/list/category');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const options = response.data.map((item: any) => ({
           id: item.NBS_UUID,
           name: item.NBS_NAME
@@ -188,22 +188,26 @@ const PublicMethodologyPage: React.FC = () => {
            </span>
          ),
        },
-       {
-         accessorFn: (row) => row.metadata?.document_type || '-',
-         id: 'sektor',
-         header: () => <div className="text-[#1a385f]">Jenis Dokumen</div>,
-         cell: (info) => (
-           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
-             {info.getValue() as string}
-           </span>
-         ),
-       },
-       {
-         accessorFn: (row) => row.publisherId?.username || '-',
-         id: 'sumber',
-         header: () => <div className="text-[#1a385f]">Pengusul</div>,
-         cell: (info) => <span className="text-gray-600 font-medium text-sm">{info.getValue() as string}</span>,
-       },
+{
+          accessorKey: 'metadata',
+          header: () => <div className="text-[#1a385f]">Sumber</div>,
+          cell: (info) => {
+            const metadata = info.getValue() as Submission['metadata'];
+            return (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#1e7e45]">
+                {metadata?.sumberAcuan || '-'}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: 'publisherId',
+          header: () => <div className="text-[#1a385f]">Pengusul</div>,
+          cell: (info) => {
+            const publisher = info.getValue() as Submission['publisherId'];
+            return <span className="text-gray-600 font-medium text-sm">{publisher?.username || '-'}</span>;
+          },
+        },
        {
          accessorKey: 'internalReviewStatus',
          header: () => <div className="text-center text-[#1a385f]">Status</div>,
@@ -225,25 +229,24 @@ const PublicMethodologyPage: React.FC = () => {
            );
          }
        },
-       {
-         id: 'actions',
-         header: () => <div className="text-center text-[#1a385f]">Aksi</div>,
-         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-         cell: (info) => (
-           <div className="flex items-center justify-center gap-3">
-             <button 
-               onClick={() => navigate(`/metodologi/${info.row.original._id}`)}
-               className="p-2 text-[#1a385f] bg-[#f0f4f8] rounded-md hover:bg-[#e1eaf3] hover:text-[#12284a] transition-all" 
-               title="Lihat Detail"
-             >
-               <Eye className="w-4 h-4" />
-             </button>
-             <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
-               <MessageSquare className="w-4 h-4" />
-             </button>
-           </div>
-         ),
-       },
+{
+            id: 'actions',
+            header: () => <div className="text-center text-[#1a385f]">Aksi</div>,
+            cell: (info) => (
+              <div className="flex items-center justify-center gap-3">
+                <button 
+                  onClick={() => navigate(`/metodologi-pengusulan/${info.row.original._id}`)}
+                  className="p-2 text-[#1a385f] bg-[#f0f4f8] rounded-md hover:bg-[#e1eaf3] hover:text-[#12284a] transition-all" 
+                  title="Lihat Detail"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-[#2c65a6] bg-[#eaf1f8] rounded-md hover:bg-[#dbe6f4] transition-all" title="Komentar Publik">
+                  <MessageSquare className="w-4 h-4" />
+                </button>
+              </div>
+            ),
+          },
      ],
      []
    );

@@ -4,6 +4,27 @@ import type { SubmissionResponse } from '../domain/models/Submission';
 export const submissionService = {
   getSubmissions: async (page = 1, limit = 10): Promise<SubmissionResponse> => {
     const token = localStorage.getItem('token');
+    const timestamp = Date.now();
+    const response = await apiClient.get<SubmissionResponse>(`/v1/submissions/public?page=${page}&limit=${limit}&_t=${timestamp}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    return response.data;
+  },
+  getSubmissionById: async (id: string): Promise<import('../domain/models/Submission').SingleSubmissionResponse> => {
+    const token = localStorage.getItem('token');
+    const response = await apiClient.get<import('../domain/models/Submission').SingleSubmissionResponse>(`/v1/submissions/${id}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    return response.data;
+  },
+  getPublicSubmissions: async (page = 1, limit = 10): Promise<SubmissionResponse> => {
+    const token = localStorage.getItem('token');
     const response = await apiClient.get<SubmissionResponse>(`/v1/submissions/public?page=${page}&limit=${limit}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -11,11 +32,13 @@ export const submissionService = {
     });
     return response.data;
   },
-  getSubmissionById: async (id: string): Promise<import('../domain/models/Submission').SingleSubmissionResponse> => {
+  getPublicSubmissionById: async (id: string): Promise<import('../domain/models/Submission').SingleSubmissionResponse> => {
     const token = localStorage.getItem('token');
     const response = await apiClient.get<import('../domain/models/Submission').SingleSubmissionResponse>(`/v1/submissions/${id}/public`, {
       headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }
     });
     return response.data;

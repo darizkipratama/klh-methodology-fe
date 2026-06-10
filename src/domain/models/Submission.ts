@@ -9,17 +9,40 @@ export interface Submission {
   };
   submissionType: string;
   metadata: {
-    author_name: string;
-    publish_date: string;
-    document_type: string;
+    kategoriSektor?: string;
+    sumberAcuan?: string;
+    publisherId?: string;
+    document_type?: string;
+    author_name?: string;
+    publish_date?: string;
+    metadata?: string;
   };
   openKmDocumentId: string;
   openKmPath: string;
   openKmPublishStatus: string;
   internalReviewStatus: string;
   reviewerId?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  comments: any[];
+  parentSubmissionId?: string | null;
+  comments: Array<{
+    comment: string;
+    commenterId: {
+      _id: string;
+      username: string;
+      role: string;
+    };
+    createdAt: string;
+    _id: string;
+  }>;
+  publicComments: Array<{
+    comment: string;
+    commenterId?: {
+      _id: string;
+      username: string;
+      role: string;
+    };
+    createdAt?: string;
+    _id?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
   __v: number;

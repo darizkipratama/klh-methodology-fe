@@ -412,7 +412,7 @@ const ExternalProposalPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [sektorOptions, setSektorOptions] = useState<SektorOption[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const [metadataConfig] = useState<MetadataField[]>(MOCK_METADATA_RESPONSE);
   const [formData, setFormData] = useState<ProposalFormData>({
     submissionType: 'NEW',
